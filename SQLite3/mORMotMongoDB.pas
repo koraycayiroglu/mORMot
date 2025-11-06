@@ -81,6 +81,7 @@ uses
   SynTable, // for TSynTableStatement
   SynLog,
   mORMot,
+  SynMongoBSON,
   SynMongoDB;
 
 type
@@ -368,6 +369,7 @@ var client: TMongoClient;
     server,port, pwd: RawUTF8;
     tls: boolean;
     p: integer;
+  aOps: TMongoClientOptions;
 begin
   result := nil;
   if aDefinition=nil then
@@ -378,7 +380,9 @@ begin
       exit; // check mandatory MongoDB IP and Database
     p := UTF8ToInteger(port,1024,65535,MONGODB_DEFAULTPORT);
     tls := ord(aDefinition.Kind[8]) in [ord('S'),ord('s')]; // 'MongoDBS'
-    client := TMongoClient.Create(server,p,tls);
+    aOps := [mcoZlibCompressor];
+    if tls then aOps := aOps + [mcoTls];
+    client := TMongoClient.Create(server,p,aOps);
     try
       with aDefinition do
         if (User<>'') and (Password<>'') then begin
@@ -1233,14 +1237,14 @@ begin
             [ClassType,distinctName,distinctName,SQL],sllError);
           exit;
         end;
-      B.BSONWrite('_id','$'+distinctName);
+      B.BsonWriteUtf8('_id','$'+distinctName);
     end else
     if length(Stmt.GroupByField)=0 then
       B.BSONWrite('_id',betNull) else begin
       B.BSONDocumentBegin('_id');
       for i := 0 to high(Stmt.GroupByField) do begin
         name := fStoredClassMapping^.FieldNameByIndex(Stmt.GroupByField[i]-1);
-        B.BSONWrite(name,'$'+name);
+        B.BsonWriteUtf8(name,'$'+name);
       end;
       B.BSONDocumentEnd;
     end;
@@ -1257,7 +1261,7 @@ begin
       B.BSONDocumentBegin('f'+UInt32ToUTF8(i));
       if func=funcCount then
         B.BSONWrite(FUNCT[func],1) else
-        B.BSONWrite(FUNCT[func],'$'+fStoredClassMapping^.FieldNameByIndex(Field-1));
+        B.BsonWriteUtf8(FUNCT[func],'$'+fStoredClassMapping^.FieldNameByIndex(Field-1));
       B.BSONDocumentEnd;
     end;
     B.BSONDocumentEnd;
@@ -1284,7 +1288,7 @@ begin
           name := name+SubField;
         if FunctionName<>'' then
           if FunctionKnown=funcDistinct then begin
-            B.BSONWrite(name,'$_id');
+            B.BsonWriteUtf8(name,'$_id');
             continue;
           end else
             name := FunctionName+'('+name+')';
@@ -1293,11 +1297,11 @@ begin
       if ToBeAdded<>0 then begin
         B.BSONDocumentBegin(name);
         B.BSONDocumentBegin('$add',betArray);
-        B.BSONWrite('0',value);
+        B.BsonWriteUtf8('0',value);
         B.BSONWrite('1',ToBeAdded);
         B.BSONDocumentEnd(2);
       end else
-        B.BSONWrite(name,value);
+        B.BsonWriteUtf8(name,value);
     end;
     B.BSONDocumentEnd(3);
     B.ToBSONVariant(Query,betArray);

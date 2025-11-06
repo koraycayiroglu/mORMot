@@ -130,6 +130,9 @@
 {.$define NOSYNDBZEOS}
 // made SynDBZeos.pas a "void" unit - defined for FPC/Lazarus packages only
 
+{.$define MONGO_OLDPROTOCOL}
+// may be used with old MongoDB instances < 3.6 with no OP_MSG in Wire protocol
+
 {.$define DDDNOSYNDB}
 // SynDB / external SQL DB won't be linked to the executable by dddInfraSettings
 {.$define DDDNOMONGODB}

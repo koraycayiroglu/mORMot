@@ -159,12 +159,14 @@ uses
 type
   /// the format used for storing data
   TSynZipCompressorFormat = (szcfRaw, szcfZip, szcfGZ);
+  PtrUInt = {$ifdef UNICODE} NativeUInt {$else} cardinal {$endif};
 
 {$ifdef DELPHI5OROLDER}
 type // Delphi 5 doesn't have those base types defined :(
   PInteger = ^Integer;
   PCardinal = ^Cardinal;
   IntegerArray  = array[0..$effffff] of Integer;
+    
 const
   PathDelim  = '\';
   soCurrent = soFromCurrent;
@@ -537,6 +539,10 @@ function inflateInit2_(var strm: TZStream; windowBits: integer;
   version: PAnsiChar; stream_size: integer): integer; cdecl;
 {$endif USEINLINEASM}
 {$endif USEPASZLIB}
+
+/// compute the maximum potential compressed size of an uncompressed buffer
+function zlibCompressMax(input: PtrUInt): PtrUInt;
+  {$ifdef CPU64}{$ifdef HASINLINE}inline;{$endif}{$endif}
 
 type
   /// simple wrapper class to decompress a .gz file into memory or stream/file
@@ -1872,6 +1878,13 @@ function deflateInit2_(var strm: TZStream; level: integer; method: integer;
   stream_size: integer): integer; external;
 function deflate(var strm: TZStream; flush: integer): integer; external;
 function deflateEnd(var strm: TZStream): integer; external;
+
+
+function zlibCompressMax(input: PtrUInt): PtrUInt;
+begin
+  // zlib compressBound = len + (len >> 12) + (len >> 14) +  (len >> 25) + 13
+  result := input + input shr 12 + input shr 14 + input shr 25 + 256;
+end;
 
 const
   _z_errmsg: array[0..9] of PAnsiChar = (
