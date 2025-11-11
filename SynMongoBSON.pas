@@ -2298,7 +2298,7 @@ begin
     BsonAddItem(TBsonDocument(b^.VBlob), NameValuePairs)
   else
   begin
-    if (vt = DocVariantVType) and
+    if (vt = cardinal(DocVariantVType)) and
        (not (PDocVariantData(b)^.Kind = dvArray)) then
     begin
       // use the existing TDocVariant object content
@@ -2522,20 +2522,15 @@ var
   Reg, Opt: PUtf8Char;
   RegLen, OptLen: integer;
 
-  procedure ReturnRegEx(P: PUtf8Char; GotoEndOfObject: AnsiChar);
-  var
-    buf: PAnsiChar;
+  procedure ReturnRegEx(P: PUTF8Char; GotoEndOfObject: AnsiChar);
+  var buf: PAnsiChar;
   begin
-    bsonvalue.VBlob := FastNewStringEx(RegLen + OptLen + 2);
+    bsonvalue.VBlob := nil; // avoid GPF
+    SetString(RawByteString(bsonvalue.VBlob),nil,RegLen+OptLen+2);
     buf := bsonvalue.VBlob;
-    MoveFast(Reg^, buf^, RegLen);
-    inc(buf, RegLen);
-    buf^ := #0;
-    inc(buf);
-    MoveFast(Opt^, buf^, OptLen);
-    inc(buf, OptLen);
-    buf^ := #0;
-    Return(betRegEx, P, GotoEndOfObject);
+    MoveFast(Reg^,buf^,RegLen); inc(buf,RegLen); buf^ := #0; inc(buf);
+    MoveFast(Opt^,buf^,OptLen); inc(buf,OptLen); buf^ := #0;
+    Return(betRegEx,P,GotoEndOfObject);
   end;
 
   procedure TryRegExShell(P: PUtf8Char);
@@ -3796,7 +3791,7 @@ begin
       BsonWriteVariant(name, PVariant(v.VPointer)^)
     else if vt = BsonVariantVType then
       BsonWrite(name, TBsonVariantData(v))
-    else if vt = DocVariantVType then
+    else if vt = cardinal(DocVariantVType) then
       BsonWrite(name, TDocVariantData(v))
     else
     begin
@@ -3837,7 +3832,7 @@ begin
   BsonDocumentBegin;
   vt := doc.VarType;
   if vt > varNull then // null,empty will write {}
-    if vt <> DocVariantVType then
+    if vt <> cardinal(DocVariantVType) then
       EBsonException.CreateUTF8(
         '%.BsonWriteDoc(VType=%)', [self, vt])
     else
@@ -3864,7 +3859,7 @@ begin
   while cardinal(b^.VType) = (varVariant or varByRef) do
     b := PVarData(b)^.VPointer;
   vt := b^.VType;
-  if vt = DocVariantVType then
+  if vt = cardinal(DocVariantVType) then
     BsonWriteDoc(PDocVariantData(b)^)
   else if (vt = BsonVariantVType) and
           (b^.VKind in [betDoc, betArray]) and
@@ -4518,7 +4513,7 @@ begin
     result := Bson(PDocVariantData(TVarData(doc).VPointer)^);
     exit;
   end;
-  if vt <> DocVariantVType then
+  if vt <> cardinal(DocVariantVType) then
     EBsonException.CreateUTF8(
       'Bson(doc) is % not a TDocVariant', [vt]);
   with TBsonWriter.Create(TRawByteStringStream) do

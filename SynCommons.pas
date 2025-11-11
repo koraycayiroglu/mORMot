@@ -997,11 +997,6 @@ procedure FastSetStringCP(var s; p: pointer; len, codepage: PtrInt);
 procedure FastAssignNew(var d; s: pointer = nil);
   {$ifndef FPC_CPUX64} {$ifdef HASINLINE}inline;{$endif} {$endif}
 
-/// internal function used by FastSetString/FastSetStringCP
-// - caller should fill the pointer result, and eventually call FastAssignNew()
-function FastNewStringEx(len: PtrInt; codepage: PtrInt = CP_RAWBYTESTRING): pointer;
-  {$ifdef HASSAFEFPCINLINE}inline;{$endif}
-
 /// initialize a RawByteString, ensuring returned "aligned" pointer is 16-bytes aligned
 // - to be used e.g. for proper SSE process
 procedure GetMemAligned(var s: RawByteString; p: pointer; len: PtrInt;
@@ -20799,32 +20794,6 @@ begin
     result := nil;
 end;
 
-function FastNewStringEx(len, codepage: PtrInt): pointer;
-var
-  rec: PStrRec;
-begin
-  result := nil;
-  if len <= 0 then
-    exit;
-  {$ifdef FPC}
-  rec := GetMem(len + (STRRECSIZE + 4));
-  result := PAnsiChar(rec) + STRRECSIZE;
-  {$else}
-  GetMem(result, len + (STRRECSIZE + 4));
-  rec := result;
-  inc(PStrRec(result));
-  {$endif FPC}
-  {$ifdef HASCODEPAGE} // also set elemSize := 1
-  {$ifdef FPC}
-  rec^.codePageElemSize := codepage + (1 shl 16); // with constant propagation
-  {$else}
-  PCardinal(@rec^.codePage)^ := codepage + (1 shl 16);
-  {$endif FPC}
-  {$endif HASCODEPAGE}
-  rec^.refCnt := 1;
-  rec^.length := len;
-  PCardinal(PAnsiChar(rec) + len + STRRECSIZE)^ := 0; // ends with four #0
-end;
 {$endif HASCODEPAGE}
 
 {$ifdef FPC_X64}
